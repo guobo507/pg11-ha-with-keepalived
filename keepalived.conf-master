@@ -1,0 +1,45 @@
+! Configuration File for keepalived
+global_defs {
+    notification_email {
+        root@localhost.localdomain
+    }
+    smtp_server 127.0.0.1
+    smtp_connect_timeout 30
+    vrrp_no_swap
+    checker_no_swap
+    script_user root root
+    router_id PG_HA_ROUTER1
+}
+
+vrrp_script check_pg_status {
+    script "/root/scripts/keepalived/pg_checkstatus.sh"
+    interval 6
+    fall 3                  # require 3 failures for KO
+    user root root
+}
+
+vrrp_instance VRRP_INST1 {
+    state MASTER
+    interface eth1
+    virtual_router_id 99
+    priority 100
+    nopreempt
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1qaz2wsx
+    }
+
+    track_script {
+        check_pg_status
+    }
+
+    virtual_ipaddress {
+        10.128.0.10/24 dev eth1 label eth1:1
+    }
+
+    smtp_alert yes
+    notify_master "/root/scripts/keepalived/pg_failover.sh"
+    notify_fault "/root/scripts/keepalived/pg_fault.sh"
+    notify_stop "/root/scripts/keepalived/pg_fault.sh"
+}
