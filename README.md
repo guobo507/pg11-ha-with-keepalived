@@ -5,9 +5,12 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 
 ### 1.1 Server environment
 
-- HOSTNAME:pgsql1    NETWORK:eth1:10.128.0.11/24（eth2:172.16.0.11/24，流复制网络）   OS:CentOS7.6    2C/8G/40GB
-- HOSTNAME:pgsql2    NETWORK:eth1:10.128.0.12/24（eth2:172.16.0.12/24，流复制网络）   OS:CentOS7.6    2C/8G/40GB
-- Virtual IP: 10.128.0.10/24(eth1:1)
+| HOSTNAME | PUBLIC IP | PRIVATE IP | CPU/MEM/DISK | OTHER INFO |
+| --------- | --------- | --------- | --------- | --------- |
+| pgsql1 | 10.128.0.11/24 | 172.16.0.11/24 | 2C/6G/40GB | CentOS7.6/PostgreSQL 11.2(MASTER) |
+| pgsql1 | 10.128.0.11/24 | 172.16.0.11/24 | 2C/6G/40GB | CentOS7.6/PostgreSQL 11.2(STANDBY) |
+
+> **Note:** Virtual IP: 10.128.0.10/24
 
 ### 1.2 Package version
 
