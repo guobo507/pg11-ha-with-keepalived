@@ -267,15 +267,15 @@ Configure rsyslog service to not record keepalived log information in system mes
     systemctl restart rsyslog.service
     systemctl disable keepalived.service
 
-### Start keepalived daemon
+### 7 Start keepalived daemon
 
-#### Start keepalived daemon on master server
+#### 7.1 Start keepalived daemon on master server
 
     /root/scripts/keepalived_start.sh
 
 > **Note:** You must start the keepalived daemon on master server first.
 
-#### Start keepalived daemon on standby server
+#### 7.2 Start keepalived daemon on standby server
 
 When keepalived daemon is running OK on master server, then start it on standby node:  
 
