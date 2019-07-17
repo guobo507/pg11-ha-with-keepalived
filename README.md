@@ -35,7 +35,7 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 
 ### 1.3 User environment setting
 
-Add the following lines to `/home/postgres/.bash_profile` for both server(You neet to create postgres user first): 
+Add the following lines to `/home/postgres/.bash_profile` for both nodes(please create postgres user first): 
 
     export PGHOME=/usr/pgsql-11
     export PGDATA=/u01/pgdata/11
@@ -43,7 +43,7 @@ Add the following lines to `/home/postgres/.bash_profile` for both server(You ne
     export PGCONF=$PGDATA/postgresql.conf
     export PGHBA=$PGDATA/pg_hba.conf
 
-Modify `/etc/hosts` file, add the following lines:
+Modify `/etc/hosts` file on both nodes, add the following lines:
 
     10.128.0.11    pgsql1
     10.128.0.12    pgsql2
@@ -54,7 +54,6 @@ Modify `/etc/hosts` file, add the following lines:
 ## 2 Install PostgreSQL and Keepalived on both nodes
 
 ### 2.1 Adjusting kernel parameter
-
 
     cat <<EOF >> /etc/sysctl.conf
     vm.overcommit_memory=2
@@ -74,7 +73,7 @@ Modify `/etc/hosts` file, add the following lines:
     @postgres   soft    stack   10240
     EOF
 
-### 2.3 Create postgres user and group
+### 2.3 Create `postgres` user and group
 
     groupadd -g 5432 postgres
     useradd -u 5432 -g postgres postgres
@@ -91,7 +90,7 @@ Modify `/etc/hosts` file, add the following lines:
 
 ## 3 Create PostgreSQL server on pgsql1
 
-### 3.1 Create PGDATA directory and run initdb
+### 3.1 Create PGDATA directory and run `initdb`
 
     mkdir -p /u01/pgdata/11
     chown -R postgres.postgres /u01/pgdata
@@ -101,7 +100,7 @@ Modify `/etc/hosts` file, add the following lines:
     /usr/pgsql-11/bin/initdb --pgdata=/u01/pgdata/11 --encoding=UTF8 --locale=C --username=postgres --pwfile=/u01/pgdata/.super_password
     mkdir /u01/pgdata/11/pg_archive
 
-### 3.2 Setting some alias for PG server management
+### 3.2 Setting some aliases for PostgreSQL server management
 
     cat << EOF >> ~/.bash_profile
     alias start_pgsql11='/usr/pgsql-11/bin/pg_ctl -D /u01/pgdata/11 -l /u01/pgdata/11/postgresql.log start'
@@ -157,7 +156,7 @@ Add the following line to `pg_hba.conf`:
 
 ## 4 Setup Stream Replication
 
-### 4.1 On server pgsql1
+### 4.1 On node pgsql1
 
 Create replication user and replication slot:
 
@@ -176,7 +175,7 @@ Reload PostgreSQL server to take effect:
 
     reload_pgsql11
 
-### 4.2 On server pgsql2
+### 4.2 On node pgsql2
 
 Get the base full backup from pgsql1 node:
 
@@ -193,12 +192,13 @@ Get the base full backup from pgsql1 node:
     EOF
     ~/scripts/postgresql_start.sh
 
-Optionally, create replication slot:
+Optionally, you can create replication slot here:
 
     psql -U postgres -c "SELECT * FROM pg_create_physical_replication_slot('pg_replslot_001');"
     psql -U postgres -c "select slot_name,plugin,slot_type,temporary,active from pg_replication_slots;"
 
-### 4.3 Check replication status
+### 4.3 Check stream replication status
+
 Check replication status from pgsql1 node:
 
     pg_controldata -D $PGDATA |grep  cluster
@@ -216,17 +216,17 @@ You must run the following command in pgsql1 node(Master) only:
     \c pgmonitor pgmonitor
     create schema pgmonitor;
     create table cluster_status (id int unique default 1, last_alive timestamp(0) without time zone);
-
+    
     CREATE FUNCTION cannt_delete ()
         RETURNS trigger
         LANGUAGE plpgsql AS $$
         BEGIN
         RAISE EXCEPTION 'You can not delete!';
         END; $$;
-
+        
     CREATE TRIGGER cannt_delete BEFORE DELETE ON cluster_status FOR EACH ROW EXECUTE PROCEDURE cannt_delete();
     CREATE TRIGGER cannt_truncate BEFORE TRUNCATE ON cluster_status FOR STATEMENT EXECUTE PROCEDURE cannt_delete();
-
+    
     insert into cluster_status values (1, now());
     \q
 
