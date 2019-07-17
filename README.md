@@ -30,8 +30,39 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
     keepalived-1.3.5-6.el7.x86_64
     ```
 
+## Setup Replication
 
+### On pgsql1
 
+创建复制用户及复制SLOT：
+
+    su - postgres
+    psql -U postgres -d postgres
+    CREATE USER replman REPLICATION LOGIN CONNECTION LIMIT 5 ENCRYPTED PASSWORD 'replman';
+    SELECT * FROM pg_create_physical_replication_slot('pg_replslot_001');
+    select slot_name,plugin,slot_type,temporary,active from pg_replication_slots;
+    \q
+
+修改pg_hba.conf文件:
+
+    PGHBA=/u01/pgdata/11/pg_hba.conf
+    echo "host    replication    replman    10.128.0.0/24    md5" >> $PGHBA
+    echo "host    all            pgpool     10.128.0.0/24    md5" >> $PGHBA
+
+附加配置（根据情况而定）：
+
+    PGCONF=/u01/pgdata/11/postgresql.conf
+    sed -i "/^#max_replication_slots/s/^#//g" $PGCONF
+    sed -i "/^#wal_sender_timeout/s/^#//g" $PGCONF
+    sed -i "/^#hot_standby/s/^#//g" $PGCONF
+    sed -i "/^#max_standby_archive_delay/s/^#//g" $PGCONF
+    sed -i "/^#max_standby_streaming_delay/s/^#//g" $PGCONF
+    sed -i "/^#wal_receiver_status_interval/s/^#//g" $PGCONF
+    sed -i "/^#hot_standby_feedback/s/^#//g" $PGCONF
+    sed -i "/^hot_standby_feedback/s/off/on/g" $PGCONF
+    sed -i "/^#wal_retrieve_retry_interval/s/^#//g" $PGCONF
+
+重启pgsql，让其生效。
 
 
 
