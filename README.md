@@ -34,13 +34,11 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 
 Add the following lines to `/home/postgres/.bash_profile` for both server: 
 
-    ```
     export PGHOME=/usr/pgsql-11
     export PGDATA=/u01/pgdata/11
     export PATH=$PGHOME/bin:$PATH
     export PGCONF=$PGDATA/postgresql.conf
     export PGHBA=$PGDATA/pg_hba.conf
-    ```
 
 Modify `/etc/hosts` file, add the following lines:
 
@@ -83,6 +81,8 @@ Modify `/etc/hosts` file, add the following lines:
 
     rpm -ivh https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
     yum clean all && yum makecache
+    yum list --showduplicates postgresql11
+
     yum install -y postgresql11-server-11.2-2PGDG.rhel7.x86_64 postgresql11-contrib-11.2-2PGDG.rhel7.x86_64
     yum install -y keepalived
 
@@ -96,6 +96,7 @@ Modify `/etc/hosts` file, add the following lines:
     su - postgres
     echo 'postgres_password' > /u01/pgdata/.super_password
     /usr/pgsql-11/bin/initdb --pgdata=/u01/pgdata/11  --encoding=UTF8 --locale=C --username=postgres --pwfile=/u01/pgdata/.super_password
+    mkdir /u01/pgdata/11/pg_archive
 
 ### 3.2 Setting some alias for PG server management
 
@@ -109,7 +110,35 @@ Modify `/etc/hosts` file, add the following lines:
 
 ### 3.3 Adjusting parameter of PostgreSQL server
 
+You can modify `postgresql.conf` file if you need, for example:
 
+    listen_addresses = '*'                  # what IP address(es) to listen on;
+    port = 5432                             # (change requires restart)
+    max_connections = 500                   # (change requires restart)
+    shared_buffers = 1024MB                 # min 512kB
+    dynamic_shared_memory_type = posix      # the default is the first option
+    max_wal_size = 2GB
+    min_wal_size = 1024MB
+    effective_cache_size = 4GB
+    log_destination = 'stderr'              # Valid values are combinations of
+    logging_collector = on                  # Enable capturing of stderr and csvlog
+    log_directory = 'log'                   # directory where log files are written,
+    log_filename = 'postgresql-%a.log'      # log file name pattern,
+    log_truncate_on_rotation = on           # If on, an existing log file with the
+    log_rotation_age = 1d                   # Automatic rotation of logfiles will
+    log_rotation_size = 0                   # Automatic rotation of logfiles will
+    log_line_prefix = '%m [%p] '            # special values:
+    log_timezone = 'Asia/Shanghai'
+    datestyle = 'iso, mdy'
+    timezone = 'Asia/Shanghai'
+    lc_messages = 'C'                       # locale for system error message
+    lc_monetary = 'C'                       # locale for monetary formatting
+    lc_numeric = 'C'                        # locale for number formatting
+    lc_time = 'C'                           # locale for time formatting
+    default_text_search_config = 'pg_catalog.english'
+    shared_preload_libraries = 'pg_stat_statements'
+    archive_mode = on               # enables archiving; on, on, or always
+    archive_command = 'test ! -f /u01/pgdata/11/pg_archive/%f && cp %p /u01/pgdata/11/pg_archive/%f'
 
 ### 3.4 Start PostgreSQL server on pgsql1 node
 
@@ -119,7 +148,7 @@ Modify `/etc/hosts` file, add the following lines:
 
 ### 2.1 On server pgsql1
 
-Create replication user and slot:
+Create replication user and replication slot:
 
     su - postgres
     psql -U postgres -d postgres
