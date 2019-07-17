@@ -1,9 +1,9 @@
 # pgsql11-ha-with-keepalived
 PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 
-## 1 Environment
+### 1 Environment
 
-### 1.1 Server environment
+#### 1.1 Server environment
 
 | HOSTNAME | PUBLIC IP | PRIVATE IP | CPU/MEM/DISK | OTHER INFO |
 | --------- | --------- | --------- | --------- | --------- |
@@ -12,7 +12,7 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 
 > **Note:** Virtual IP: 10.128.0.10/24
 
-### 1.2 Package version
+#### 1.2 Package version
 
 - PostgreSQL：
 
@@ -33,7 +33,7 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
     keepalived-1.3.5-6.el7.x86_64
     ```
 
-### 1.3 User environment setting
+#### 1.3 User environment setting
 
 Add the following lines to `/home/postgres/.bash_profile` for both nodes(please create postgres user first): 
 
@@ -51,9 +51,9 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     172.16.0.12    pgsql2-priv
     10.128.0.10    pgsql-vip
 
-## 2 Install PostgreSQL and Keepalived on both nodes
+### 2 Install PostgreSQL and Keepalived on both nodes
 
-### 2.1 Adjusting kernel parameter
+#### 2.1 Adjusting kernel parameter
 
     cat <<EOF >> /etc/sysctl.conf
     vm.overcommit_memory=2
@@ -64,7 +64,7 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     sysctl -w vm.nr_hugepages=2048
     sysctl -p
 
-### 2.2 Setting `/etc/security/limits.conf`
+#### 2.2 Setting `/etc/security/limits.conf`
 
     cat <<EOF >> /etc/security/limits.conf
     @postgres   soft    nofile  4096
@@ -73,13 +73,13 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     @postgres   soft    stack   10240
     EOF
 
-### 2.3 Create `postgres` user and group
+#### 2.3 Create `postgres` user and group
 
     groupadd -g 5432 postgres
     useradd -u 5432 -g postgres postgres
     echo pguser_password |passwd --stdin postgres
 
-### 2.4 Install `postgresql11-server` and `keepalived` packages
+#### 2.4 Install `postgresql11-server` and `keepalived` packages
 
     rpm -ivh https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
     yum clean all && yum makecache
@@ -88,9 +88,9 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     yum install -y postgresql11-server-11.2-2PGDG.rhel7.x86_64 postgresql11-contrib-11.2-2PGDG.rhel7.x86_64
     yum install -y keepalived
 
-## 3 Create PostgreSQL server on pgsql1
+### 3 Create PostgreSQL server on pgsql1
 
-### 3.1 Create PGDATA directory and run `initdb`
+#### 3.1 Create PGDATA directory and run `initdb`
 
     mkdir -p /u01/pgdata/11
     chown -R postgres.postgres /u01/pgdata
@@ -100,7 +100,7 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     /usr/pgsql-11/bin/initdb --pgdata=/u01/pgdata/11 --encoding=UTF8 --locale=C --username=postgres --pwfile=/u01/pgdata/.super_password
     mkdir /u01/pgdata/11/pg_archive
 
-### 3.2 Setting some aliases for PostgreSQL server management
+#### 3.2 Setting some aliases for PostgreSQL server management
 
     cat << EOF >> ~/.bash_profile
     alias start_pgsql11='/usr/pgsql-11/bin/pg_ctl -D /u01/pgdata/11 -l /u01/pgdata/11/postgresql.log start'
@@ -110,7 +110,9 @@ Modify `/etc/hosts` file on both nodes, add the following lines:
     EOF
     source ~/.bash_profile
 
-### 3.3 Adjusting parameter of PostgreSQL server
+> **Note:** You must setting those lines on node pgsql2 too, so you can use these command to manage PostgreSQL server rapidly.
+
+#### 3.3 Adjusting parameter of PostgreSQL server
 
 You can modify your `postgresql.conf` file if you need, for example:
 
@@ -144,19 +146,19 @@ Add the following line to `pg_hba.conf`:
 
     echo "host    all    all    0.0.0.0/0    md5" >> /u01/pgdata/11/pg_hba.conf
 
-### 3.4 Start PostgreSQL server on pgsql1 node
+#### 3.4 Start PostgreSQL server on pgsql1 node
 
     start_pgsql11
 
-### 3.5 Create `pg_stat_statements` extension view
+#### 3.5 Create `pg_stat_statements` extension view
 
     psql -U postgres -c 'create extension pg_stat_statements;'
     psql -U postgres -d template1 -c 'create extension pg_stat_statements;'
     echo "shared_preload_libraries = 'pg_stat_statements'" >> $PGCONF
 
-## 4 Setup Stream Replication
+### 4 Setup Stream Replication
 
-### 4.1 On node pgsql1
+#### 4.1 On node pgsql1
 
 Create replication user and replication slot:
 
@@ -175,7 +177,7 @@ Reload PostgreSQL server to take effect:
 
     reload_pgsql11
 
-### 4.2 On node pgsql2
+#### 4.2 On node pgsql2
 
 Get the base full backup from pgsql1 node:
 
@@ -197,7 +199,7 @@ Optionally, you can create replication slot here:
     psql -U postgres -c "SELECT * FROM pg_create_physical_replication_slot('pg_replslot_001');"
     psql -U postgres -c "select slot_name,plugin,slot_type,temporary,active from pg_replication_slots;"
 
-### 4.3 Check stream replication status
+#### 4.3 Check stream replication status
 
 Check replication status from pgsql1 node:
 
@@ -205,7 +207,7 @@ Check replication status from pgsql1 node:
     psql -U postgres -x -c "select * from pg_stat_replication;"
     psql -U postgres -c "select slot_name,plugin,slot_type,temporary,active from pg_replication_slots;"
 
-## 5 Create database `pgmonitor` for keepalived to monitoring replication status
+### 5 Create database `pgmonitor` for keepalived to monitoring replication status
 
 You must run the following command in pgsql1 node(Master) only:
 
@@ -216,17 +218,17 @@ You must run the following command in pgsql1 node(Master) only:
     \c pgmonitor pgmonitor
     create schema pgmonitor;
     create table cluster_status (id int unique default 1, last_alive timestamp(0) without time zone);
-    
+
     CREATE FUNCTION cannt_delete ()
         RETURNS trigger
         LANGUAGE plpgsql AS $$
         BEGIN
         RAISE EXCEPTION 'You can not delete!';
         END; $$;
-        
+
     CREATE TRIGGER cannt_delete BEFORE DELETE ON cluster_status FOR EACH ROW EXECUTE PROCEDURE cannt_delete();
     CREATE TRIGGER cannt_truncate BEFORE TRUNCATE ON cluster_status FOR STATEMENT EXECUTE PROCEDURE cannt_delete();
-    
+
     insert into cluster_status values (1, now());
     \q
 
@@ -241,7 +243,7 @@ Then, reload PostgreSQL server(Master):
 
     reload_pgsql11
 
-## 6 Configure keepalived on both nodes
+### 6 Configure keepalived on both nodes
 
 Clone this repository to your server, put `scripts` directory into `/root/`. Setting the excute permission(700) for all scripts like this:
 
@@ -265,19 +267,20 @@ Configure rsyslog service to not record keepalived log information in system mes
     systemctl restart rsyslog.service
     systemctl disable keepalived.service
 
-## Start keepalived daemon
+### Start keepalived daemon
 
-### Start keepalived daemon on master server
+#### Start keepalived daemon on master server
 
     /root/scripts/keepalived_start.sh
 
 > **Note:** You must start the keepalived daemon on master server first.
 
-### Start keepalived daemon on standby server
+#### Start keepalived daemon on standby server
 
 When keepalived daemon is running OK on master server, then start it on standby node:  
 
     /root/scripts/keepalived_start.sh
 
+You should stop the keepalived daemon on standby node first, or the standby node will be promoted to master server. 
 
 
