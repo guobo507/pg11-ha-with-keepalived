@@ -8,7 +8,7 @@ PostgreSQL 11.2高可用集群：Stream Replication + Keepalived HA
 | HOSTNAME | PUBLIC IP | PRIVATE IP | CPU/MEM/DISK | OTHER INFO |
 | --------- | --------- | --------- | --------- | --------- |
 | pgsql1 | 10.128.0.11/24 | 172.16.0.11/24 | 2C/6G/40GB | CentOS7.6/PostgreSQL 11.2(MASTER) |
-| pgsql1 | 10.128.0.11/24 | 172.16.0.11/24 | 2C/6G/40GB | CentOS7.6/PostgreSQL 11.2(STANDBY) |
+| pgsql2 | 10.128.0.12/24 | 172.16.0.12/24 | 2C/6G/40GB | CentOS7.6/PostgreSQL 11.2(STANDBY) |
 
 > **Note:** Virtual IP: 10.128.0.10/24
 
